@@ -9,6 +9,9 @@ const { createQueue } = require('@app-core/queue');
 
 const canLogEndpointInformation = process.env.CAN_LOG_ENDPOINT_INFORMATION;
 
+// Register all models with Mongoose before anything else connects
+require('./models');
+
 createConnection({
   uri: process.env.MONGODB_URI,
 });
@@ -24,6 +27,9 @@ const server = createServer({
 const ENDPOINT_CONFIGS = [
   {
     path: './endpoints/onboarding/',
+  },
+  {
+    path: './endpoints/creator-cards/',
   },
 ];
 
