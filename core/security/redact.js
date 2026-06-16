@@ -38,21 +38,57 @@ function redact(data, opts) {
     return data;
   }
 
+  // eslint-disable-next-line no-use-before-define
+  return redactWithContext(data, opts, new WeakSet());
+}
+
+function redactWithContext(data, opts, visited) {
+  if (!data || typeof data !== 'object') {
+    return data;
+  }
+
+  if (visited.has(data)) {
+    return '[Circular]';
+  }
+
+  if (Array.isArray(data)) {
+    visited.add(data);
+    return data.map((el) =>
+      el && typeof el === 'object' ? redactWithContext(el, opts, visited) : el
+    );
+  }
+
+  visited.add(data);
+
+  let keys = [];
+  try {
+    keys = Object.keys(data);
+  } catch (error) {
+    return '[Unserializable Object]';
+  }
+
   const redactedData = {};
 
-  Object.keys(data).forEach((key) => {
+  keys.forEach((key) => {
+    let currentValue;
+    try {
+      currentValue = data[key];
+    } catch (error) {
+      currentValue = '[Unreadable Property]';
+    }
+
     if (opts.fieldsToRedact[normKey(key)]) {
       if (!opts.removeRedactedFields) {
         redactedData[key] = opts.replaceWithValue;
       }
-    } else if (Array.isArray(data[key])) {
-      redactedData[key] = data[key].map((el) =>
-        el && typeof el === 'object' ? redact(el, opts) : el
+    } else if (Array.isArray(currentValue)) {
+      redactedData[key] = currentValue.map((el) =>
+        el && typeof el === 'object' ? redactWithContext(el, opts, visited) : el
       );
-    } else if (data[key] && typeof data[key] === 'object') {
-      redactedData[key] = redact(data[key], opts);
+    } else if (currentValue && typeof currentValue === 'object') {
+      redactedData[key] = redactWithContext(currentValue, opts, visited);
     } else {
-      redactedData[key] = data[key];
+      redactedData[key] = currentValue;
     }
   });
 
